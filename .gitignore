@@ -1,6 +1,6 @@
 # ignore everything inside deb_files folder but don't ignore the folder itself
-deb_files/*
-!deb_files/.gitkeep
+installation_files/*
+!installation_files/.gitkeep
 
 # ignore keyring files (as they will be created by the installation scripts)
 *.gpg
