@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # the g++ compiler has to be installed because sometimes we have to compile packages from source if they are not available as pip-packages
 # for the desired python version
 apt install g++
