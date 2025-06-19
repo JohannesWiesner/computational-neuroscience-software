@@ -2,7 +2,7 @@
 
 # install Ferdium
 # https://ferdium.org/download
-deb_file=$(find ./installation_files -name 'icaclient*.deb')
+deb_file=$(find ./installation_files -name 'icaclient_23.11.0.82_amd64.deb')
 
 # check if the file exists and only then run installation command
 # https://unix.stackexchange.com/a/657087/540273
