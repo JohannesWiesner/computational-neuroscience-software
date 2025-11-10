@@ -1,8 +1,16 @@
-# Install common software that a computational neuroscients needs
+# computational-neuroscience-software
 
-This repo contains installation scripts that will install commonly needed software for computational neuroscients on Ubuntu 22.04
+Consolidated installer helpers for commonly used software.
 
-# Similar Repos
+Usage
+- Place any vendor-provided .deb or tarball installers into the `installation_files/` directory.
+- Use the unified installer script:
+  - List installers: ./scripts/install.sh --list
+  - Install a single package: sudo ./scripts/install.sh zotero
+  - Install everything: sudo ./scripts/install.sh --all
 
-
-https://github.com/treanus/KUL_Linux_Installation
+Notes
+- The script needs root rights for system-level install steps.
+- Consider running static checks (shellcheck) in CI:
+  - Install ShellCheck and run: shellcheck scripts/install.sh
+- Keep large vendor artifacts in `installation_files/` to avoid committing binaries directly to git history.
