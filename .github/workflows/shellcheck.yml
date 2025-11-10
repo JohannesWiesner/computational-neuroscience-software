@@ -1,0 +1,27 @@
+name: ShellCheck
+
+on:
+  push:
+    paths:
+      - 'scripts/**'
+  pull_request:
+    paths:
+      - 'scripts/**'
+
+jobs:
+  shellcheck:
+    name: Run ShellCheck on scripts/install.sh
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        # --external-sources allows checking sourced files if needed; -x expands sourced files
+        run: |
+          shellcheck --external-sources -x -S all scripts/install.sh
