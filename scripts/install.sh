@@ -67,6 +67,7 @@ apt_install_packages() {
 
 # Individual installers
 
+# Note: Right now, only icaclient_23.11.0.82_amd64.deb works for me (under ubuntu 22.04)
 install_citrix_client() {
   require_root
   info "Installing Citrix client (expecting local .deb)"
