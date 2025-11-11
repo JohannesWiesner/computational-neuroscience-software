@@ -179,17 +179,10 @@ install_insync() {
   apt-get install -y insync
 }
 
+# https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html#automatic-install
 install_micromamba() {
-  require_root
   info "Installing micromamba (user-local install)"
-  apt_install_packages g++ ca-certificates curl || true
-  mkdir -p /usr/local/bin
-  # Install micromamba binary for linux-64 and place in /usr/local/bin
-  tmpdir="$(mktemp -d)"
-  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj -C "$tmpdir" bin/micromamba
-  install -m 0755 "$tmpdir/bin/micromamba" /usr/local/bin/micromamba
-  rm -rf "$tmpdir"
-  info "micromamba installed to /usr/local/bin/micromamba; run 'micromamba shell init' as needed"
+  "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
 }
 
 install_mricrogl() {
