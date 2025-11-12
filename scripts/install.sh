@@ -127,9 +127,25 @@ install_ferdium() {
 install_googlechrome() {
   require_root
   info "Installing Google Chrome (stable)"
-  tmp="$(mktemp)"
-  wget -q -O "$tmp" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-  apt -y install "$tmp" && rm -f "$tmp"
+
+  local deb_name="google-chrome-stable_current_amd64.deb"
+  local deb_path="${INSTALL_DIR}/${deb_name}"
+
+  # 1. Check if .deb exists locally
+  if [[ -f "$deb_path" ]]; then
+    info "Found existing $deb_name in $INSTALL_DIR"
+  else
+    info "Downloading $deb_name to $INSTALL_DIR"
+    wget -q -O "$deb_path" "https://dl.google.com/linux/direct/${deb_name}"
+  fi
+
+  # 2. Install using helper function
+  if install_deb_from_assets "$deb_name"; then
+    info "Google Chrome installed successfully"
+  else
+    error "Failed to install Google Chrome"
+    return 1
+  fi
 }
 
 install_guvcview() {
