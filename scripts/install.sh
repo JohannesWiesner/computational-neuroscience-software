@@ -351,13 +351,13 @@ run_selected() {
       citrix) install_citrix_client ;;
       docker) install_docker ;;
       drawio) install_drawio ;;
-      dsi-studio|dsistudio|dsistudio) install_dsistudio ;;
+      dsi-studio|dsistudio) install_dsistudio ;;
       ferdium) install_ferdium ;;
       googlechrome|chrome) install_googlechrome ;;
       guvcview) install_guvcview ;;
       insync) install_insync ;;
       micromamba) install_micromamba ;;
-      mricrogl|mricrogl) install_mricrogl ;;
+      mricrogl) install_mricrogl ;;
       nextcloud) install_nextcloud ;;
       obsidian) install_obsidian ;;
       octave) install_octave ;;
