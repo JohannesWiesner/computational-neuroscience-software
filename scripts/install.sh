@@ -65,7 +65,9 @@ apt_install_packages() {
   apt install -y "$@"
 }
 
+############################################################################################
 # Individual installers
+############################################################################################
 
 # Note: Right now, only icaclient_23.11.0.82_amd64.deb works for me (under ubuntu 22.04)
 install_citrix_client() {
@@ -152,6 +154,12 @@ install_guvcview() {
   require_root
   info "Installing guvcview"
   apt_install_packages guvcview || warn "guvcview not available in apt for your distro"
+}
+
+install_steam() {
+  require_root
+  info "Installing steam"
+  apt_install_packages steam || warn "steam not available in apt for your distro"
 }
 
 install_insync() {
@@ -305,6 +313,10 @@ install_zotero() {
   fi
 }
 
+############################################################################################
+# Scripts that help running selected installers or all
+############################################################################################
+
 # List available installers
 list_installers() {
   cat <<EOF
@@ -354,6 +366,7 @@ run_selected() {
       tuxedo|tuxedo-control-center) install_tuxedo ;;
       zoom|zoomclient) install_zoomclient ;;
       zotero) install_zotero ;;
+      steam) install_steam ;;
       *)
         warn "Unknown installer: $t"
         ;;
@@ -373,7 +386,7 @@ if [[ "$1" == "--list" ]]; then
 fi
 
 if [[ "$1" == "--all" ]]; then
-  run_selected citrix docker drawio dsi-studio ferdium googlechrome guvcview insync micromamba mricrogl nextcloud obsidian octave signal spotify tuxedo zoom zotero
+  run_selected citrix docker drawio dsi-studio ferdium googlechrome guvcview insync micromamba mricrogl nextcloud obsidian octave signal spotify tuxedo zoom zotero steam
   exit 0
 fi
 
