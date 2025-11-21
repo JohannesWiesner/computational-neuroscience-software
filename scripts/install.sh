@@ -150,6 +150,31 @@ install_googlechrome() {
   fi
 }
 
+install_zoomclient() {
+  require_root
+  info "Installing Zoom client (deb)"
+
+  local deb_name="zoom_amd64.deb"
+  local deb_path="${INSTALL_DIR}/${deb_name}"
+
+    # 1. Check if .deb exists locally
+  if [[ -f "$deb_path" ]]; then
+    info "Found existing $deb_name in $INSTALL_DIR"
+  else
+    info "Downloading $deb_name to $INSTALL_DIR"
+    wget -q -O "$deb_path" "https://zoom.us/client/latest/${deb_name}"
+  fi
+
+  # 2. Install using helper function
+  if install_deb_from_assets "$deb_name"; then
+    info "Zoom installed successfully"
+  else
+    error "Failed to install Zoom"
+    return 1
+  fi
+
+}
+
 install_guvcview() {
   require_root
   info "Installing guvcview"
@@ -288,14 +313,6 @@ install_tuxedo() {
   codename=$(lsb_release -cs)
   echo "deb [signed-by=/usr/share/keyrings/tuxedo-archive-keyring.gpg] https://deb.tuxedocomputers.com/ubuntu/ $codename main" | tee /etc/apt/sources.list.d/tuxedo.list > /dev/null
   apt_install_packages tuxedo-control-center tuxedo-drivers
-}
-
-install_zoomclient() {
-  require_root
-  info "Installing Zoom client (deb)"
-  tmp="$(mktemp)"
-  wget -q -O "$tmp" https://zoom.us/client/latest/zoom_amd64.deb
-  apt -y install "$tmp" && rm -f "$tmp"
 }
 
 install_zotero() {
