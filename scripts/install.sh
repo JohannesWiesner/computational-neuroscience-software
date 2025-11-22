@@ -330,6 +330,32 @@ install_zotero() {
   fi
 }
 
+install_onlyoffice() {
+  require_root
+  info "Installing Only Office (deb)"
+
+  local deb_name="onlyoffice-desktopeditors_amd64.deb"
+  local deb_path="${INSTALL_DIR}/${deb_name}"
+
+    # 1. Check if .deb exists locally
+  if [[ -f "$deb_path" ]]; then
+    info "Found existing $deb_name in $INSTALL_DIR"
+  else
+    info "Downloading $deb_name to $INSTALL_DIR"
+    wget -q -O "$deb_path" "https://github.com/ONLYOFFICE/DesktopEditors/releases/latest/download/${deb_name}"
+  fi
+
+  # 2. Install using helper function
+  if install_deb_from_assets "$deb_name"; then
+    info "Only Office installed successfully"
+  else
+    error "Failed to install Only Office"
+    return 1
+  fi
+
+}
+
+
 ############################################################################################
 # Scripts that help running selected installers or all
 ############################################################################################
@@ -384,6 +410,7 @@ run_selected() {
       zoom|zoomclient) install_zoomclient ;;
       zotero) install_zotero ;;
       steam) install_steam ;;
+      onlyoffice) install_onlyoffice ;;
       *)
         warn "Unknown installer: $t"
         ;;
