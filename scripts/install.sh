@@ -110,7 +110,7 @@ install_drawio() {
 install_dsistudio() {
   require_root
   info "Installing DSI-Studio (local zip expected)"
-  apt_install_packages libqt6charts6-dev unzip || true
+  #apt_install_packages libqt6charts6-dev unzip || true
   if install_tarball_to_opt 'dsi_studio*.zip' 'dsi-studio'; then
     chmod -R 755 /opt/dsi-studio || true
   else
@@ -355,6 +355,20 @@ install_onlyoffice() {
 
 }
 
+install_thunderbird(){
+  # https://www.thunderbird.net/de/thunderbird/all/
+  require_root
+  info "Installing Thunderbird"
+
+  if install_tarball_to_opt 'thunderbird*.tar.xz' 'thunderbird'; then
+    chmod -R 755 /opt/thunderbird || true
+  else
+    warn "No thunderbird tarball in installation_files/ (look for thunderbird*.tar.xz)"
+  fi
+
+
+}
+
 
 ############################################################################################
 # Scripts that help running selected installers or all
@@ -382,6 +396,7 @@ Available installers:
   tuxedo
   zoom
   zotero
+  thunderbird
 Use: $0 --all  OR  $0 <name> [name...]
 EOF
 }
@@ -411,6 +426,7 @@ run_selected() {
       zotero) install_zotero ;;
       steam) install_steam ;;
       onlyoffice) install_onlyoffice ;;
+      thunderbird) install_thunderbird ;;
       *)
         warn "Unknown installer: $t"
         ;;
