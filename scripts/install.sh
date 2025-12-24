@@ -365,10 +365,14 @@ install_thunderbird(){
   else
     warn "No thunderbird tarball in installation_files/ (look for thunderbird*.tar.xz)"
   fi
-
-
 }
 
+install_calibre(){
+  # https://calibre-ebook.com/download_linux
+  require_root
+  info "Installing Calibre"
+  wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin
+}
 
 ############################################################################################
 # Scripts that help running selected installers or all
@@ -396,7 +400,10 @@ Available installers:
   tuxedo
   zoom
   zotero
+  steam
+  onlyoffice
   thunderbird
+  calibre
 Use: $0 --all  OR  $0 <name> [name...]
 EOF
 }
@@ -427,6 +434,7 @@ run_selected() {
       steam) install_steam ;;
       onlyoffice) install_onlyoffice ;;
       thunderbird) install_thunderbird ;;
+      calibre) install_calibre ;;
       *)
         warn "Unknown installer: $t"
         ;;
@@ -446,7 +454,7 @@ if [[ "$1" == "--list" ]]; then
 fi
 
 if [[ "$1" == "--all" ]]; then
-  run_selected citrix docker drawio dsi-studio ferdium googlechrome guvcview insync micromamba mricrogl nextcloud obsidian octave signal spotify tuxedo zoom zotero steam
+  run_selected citrix docker drawio dsi-studio ferdium googlechrome guvcview insync micromamba mricrogl nextcloud obsidian octave signal spotify tuxedo zoom zotero steam onlyoffice thunderbird calibre
   exit 0
 fi
 
