@@ -71,21 +71,19 @@ install_deb_url() {
 }
 
 install_github_latest_deb() {
-  # Usage: install_github_latest_deb <owner/repo> <grep-regex-for-deb-url>
+  # Usage: install_github_latest_deb <owner/repo> <name>
   require_root
-  local repo="$1" regex="$2"
+  local repo="$1"
+  local name="$2"
   local api="https://api.github.com/repos/${repo}/releases/latest"
-  local url tmp
+  local url
 
-  url="$(curl -fsSL "$api" | grep -oE "$regex" | head -n1 || true)"
-  [[ -n "$url" ]] || return 1
+  # gets the exact url to the .deb file
+  url=$(curl -fsSL "$api" | jq -r '.assets[] | select(.name | endswith(".deb")) | .browser_download_url' | head -n1)
+  [[ -n "$url" ]] || die "Could not get url to .deb file from github API"
 
-  tmp="$(mktemp)"
-  wget -q -O "$tmp" "$url"
-  apt_update_once
-  info "Installing deb from: $repo (latest)"
-  apt-get install -y "$tmp"
-  rm -f "$tmp"
+  # downloads the .deb file and installs application
+  install_deb_url $url $name
 }
 
 install_archive_to_opt() {
@@ -134,9 +132,7 @@ install_docker() {
 install_drawio() {
   require_root
   info "Installing draw.io desktop"
-  apt_install_packages openjdk-11-jre-headless xvfb xauth
-  install_github_latest_deb "jgraph/drawio-desktop" 'https://[^"]+drawio-amd64-[0-9.]+\.deb' \
-    || warn "Could not find latest drawio automatically; add drawio-amd64-*.deb to installation_files/."
+  install_github_latest_deb "jgraph/drawio-desktop" "drawio.deb" || warn "Could not install drawio"
 }
 
 install_dsistudio() {
