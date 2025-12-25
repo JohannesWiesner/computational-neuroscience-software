@@ -79,7 +79,7 @@ install_github_latest_deb() {
   local url
 
   # gets the exact url to the .deb file
-  url=$(curl -fsSL "$api" | jq -r '.assets[] | select(.name | endswith(".deb")) | .browser_download_url' | head -n1)
+  url=$(curl -fsSL "$api" | jq -r '.assets[] | select(.name | test("amd64.*\\.deb$")) | .browser_download_url' | head -n1)
   [[ -n "$url" ]] || die "Could not get url to .deb file from github API"
 
   # downloads the .deb file and installs application
@@ -112,8 +112,7 @@ install_archive_to_opt() {
 install_citrix_client() {
   require_root
   info "Installing Citrix client (expecting local .deb)"
-  install_deb_from_assets 'icaclient_*.deb' \
-    || warn "No local icaclient .deb found; add icaclient_*.deb to installation_files/"
+  install_deb_from_assets 'icaclient_*.deb' || warn "No local icaclient .deb found; add icaclient_*.deb to installation_files/"
 }
 
 install_docker() {
@@ -167,8 +166,8 @@ install_zoomclient() {
 install_onlyoffice() {
   require_root
   info "Installing OnlyOffice"
-  install_deb_url "https://github.com/ONLYOFFICE/DesktopEditors/releases/latest/download/onlyoffice-desktopeditors_amd64.deb" \
-                  "onlyoffice-desktopeditors_amd64.deb"
+  install_github_latest_deb "ONLYOFFICE/DesktopEditors" "onlyoffice-desktopeditors.deb" || warn "Could not install OnlyOffice Desktop Editors"
+  #install_deb_url "https://github.com/ONLYOFFICE/DesktopEditors/releases/latest/download/onlyoffice-desktopeditors_amd64.deb" \"onlyoffice-desktopeditors_amd64.deb"
 }
 
 install_guvcview() { require_root; info "Installing guvcview"; apt_install_packages guvcview || warn "Not available"; }
