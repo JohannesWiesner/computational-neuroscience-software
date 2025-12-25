@@ -11,7 +11,7 @@ INSTALL_DIR="${REPO_ROOT}/installation_files"
 info()  { printf "\033[1;34m[INFO]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[WARN]\033[0m %s\n" "$*"; }
 die()   { printf "\033[1;31m[ERROR]\033[0m %s\n" "$*" >&2; exit 1; }
-require_root() { [[ ${EUID:-$(id -u)} -eq 0 ]] || die "Root required. Re-run with sudo." }
+require_root() { [[ ${EUID:-$(id -u)} -eq 0 ]] || die "Root required. Re-run with sudo."; }
 
 # ----------------------------------------------------------------------------------------------------------------
 # Shared helpers across installation functions
@@ -269,6 +269,14 @@ install_calibre() {
   wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin
 }
 
+install_insync() {
+  require_root
+  info "Installing Insync"
+  install_deb_from_assets 'insync_*.deb' \
+    || warn "No local insync .deb found; add insync_*.deb to installation_files/"
+}
+
+
 # ------------------------------------------------------------------------------------------------------------
 # Client (run selected or all installers)
 # ------------------------------------------------------------------------------------------------------------
@@ -281,7 +289,6 @@ declare -A INSTALLERS=(
   [ferdium]=install_ferdium
   [googlechrome]=install_googlechrome
   [guvcview]=install_guvcview
-  [insync]=install_insync
   [micromamba]=install_micromamba
   [mricrogl]=install_mricrogl
   [nextcloud]=install_nextcloud
@@ -296,6 +303,7 @@ declare -A INSTALLERS=(
   [onlyoffice]=install_onlyoffice
   [thunderbird]=install_thunderbird
   [calibre]=install_calibre
+  [insync]=install_insync
 )
 
 list_installers() {
