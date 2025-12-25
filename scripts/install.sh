@@ -102,7 +102,7 @@ install_archive_to_opt() {
     *.tar.bz2) tar -xjf "$asset" --strip-components=1 -C "/opt/$dest" ;;
     *.tar.xz)  tar -xJf "$asset" --strip-components=1 -C "/opt/$dest" ;;
     *.tar.gz|*.tgz) tar -xzf "$asset" --strip-components=1 -C "/opt/$dest" ;;
-    *.zip)     unzip -o "$asset" -d "/opt/$dest" >/dev/null ;;
+    *.zip)     unzip -o -j "$asset" -d "/opt/$dest" >/dev/null ;;
     *) die "Unknown archive type: $asset" ;;
   esac
 }
@@ -142,6 +142,7 @@ install_drawio() {
 install_dsistudio() {
   require_root
   info "Installing DSI-Studio (local zip expected)"
+  apt_install_packages libqt6charts6-dev # See: https://dsi-studio.labsolver.org/download.html
   install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio' \
     && chmod -R 755 /opt/dsi-studio || warn "No DSI-Studio zip in installation_files/ (dsi_studio*.zip)"
 }
