@@ -14,3 +14,8 @@ Notes
 - Consider running static checks (shellcheck) in CI:
   - Install ShellCheck and run: shellcheck scripts/install.sh
 - Keep large vendor artifacts in `installation_files/` to avoid committing binaries directly to git history.
+
+
+## Download pages
+
+Insync : https://www.insynchq.com/downloads/linux
