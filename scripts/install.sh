@@ -1,93 +1,133 @@
 #!/usr/bin/env bash
-# Unified installer for computational-neuroscience-software
-# Supports: citrix, docker, drawio, dsi-studio, ferdium, googlechrome, guvcview,
-#           insync, micromamba, mricrogl, nextcloud, obsidian, octave,
-#           signal, spotify, tuxedo, zoom, zotero
-#
-# Usage:
-#   ./scripts/install.sh --list
-#   sudo ./scripts/install.sh --all
-#   sudo ./scripts/install.sh insync docker zotero
-set -euo pipefail
 
+set -Eeuo pipefail # fail directly
+IFS=$'\n\t' # split strings only on new lines and tabs (not on whitespaces)
+
+# get absolute path to where this script is located and the corresponding installation director
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL_DIR="${REPO_ROOT}/installation_files"
 
 # Logging helpers
 info()  { printf "\033[1;34m[INFO]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[WARN]\033[0m %s\n" "$*"; }
-error() { printf "\033[1;31m[ERROR]\033[0m %s\n" "$*" >&2; }
+die()   { printf "\033[1;31m[ERROR]\033[0m %s\n" "$*" >&2; exit 1; }
+require_root() { [[ ${EUID:-$(id -u)} -eq 0 ]] || die "Root required. Re-run with sudo." }
 
-require_root() {
-  if [[ $EUID -ne 0 ]]; then
-    error "This script requires root privileges. Re-run with sudo."
-    exit 1
+# ----------------------------------------------------------------------------------------------------------------
+# Shared helpers across installation functions
+# ----------------------------------------------------------------------------------------------------------------
+
+APT_UPDATED=0
+apt_update_once() {
+  require_root
+  if [[ "$APT_UPDATED" -eq 0 ]]; then
+    apt-get update -y
+    APT_UPDATED=1
   fi
 }
 
-# Helpers
+apt_install_packages() {
+  require_root
+  apt_update_once
+  apt-get install -y "$@"
+}
+
 find_asset() {
   local pattern="$1"
   find "$INSTALL_DIR" -maxdepth 1 -type f -name "$pattern" | head -n1 || true
 }
 
 install_deb_from_assets() {
+  require_root
   local pattern="$1"
   local deb
-  deb=$(find_asset "$pattern")
-  if [[ -n "$deb" ]]; then
-    info "Installing deb $deb"
-    apt -y install "$deb"
-    return 0
+  deb="$(find_asset "$pattern")"
+  [[ -n "$deb" ]] || return 1
+  apt_update_once
+  info "Installing deb: $deb"
+  apt-get install -y "$deb"
+}
+
+download_if_missing() {
+  local url="$1" path="$2"
+  mkdir -p "$INSTALL_DIR"
+  if [[ -f "$path" ]]; then
+    info "Using existing: $path"
   else
-    return 1
+    info "Downloading: $url"
+    wget -q -O "$path" "$url"
   fi
 }
 
-install_tarball_to_opt() {
-  local pattern="$1"
-  local dest="$2"
-  local tb
-  tb=$(find_asset "$pattern")
-  if [[ -n "$tb" ]]; then
-    info "Extracting $tb to /opt/$dest"
-    mkdir -p "/opt/$dest"
-    tar -xf "$tb" --strip-components=1 -C "/opt/$dest"
-    return 0
-  else
-    return 1
-  fi
-}
-
-apt_install_packages() {
+install_deb_url() {
+  # Usage: install_deb_url <url> <filename>
   require_root
-  apt update
-  apt install -y "$@"
+  local url="$1" name="$2"
+  local path="${INSTALL_DIR}/${name}"
+  download_if_missing "$url" "$path"
+  apt_update_once
+  info "Installing deb: $path"
+  apt-get install -y "$path"
 }
 
-############################################################################################
-# Individual installers
-############################################################################################
+install_github_latest_deb() {
+  # Usage: install_github_latest_deb <owner/repo> <grep-regex-for-deb-url>
+  require_root
+  local repo="$1" regex="$2"
+  local api="https://api.github.com/repos/${repo}/releases/latest"
+  local url tmp
 
-# Note: Right now, only icaclient_23.11.0.82_amd64.deb works for me (under ubuntu 22.04)
+  url="$(curl -fsSL "$api" | grep -oE "$regex" | head -n1 || true)"
+  [[ -n "$url" ]] || return 1
+
+  tmp="$(mktemp)"
+  wget -q -O "$tmp" "$url"
+  apt_update_once
+  info "Installing deb from: $repo (latest)"
+  apt-get install -y "$tmp"
+  rm -f "$tmp"
+}
+
+install_archive_to_opt() {
+  # Usage: install_archive_to_opt <pattern-in-assets> <opt-subdir>
+  require_root
+  local pattern="$1" dest="$2" asset
+  asset="$(find_asset "$pattern")"
+  [[ -n "$asset" ]] || return 1
+
+  info "Extracting $(basename "$asset") to /opt/$dest"
+  mkdir -p "/opt/$dest"
+
+  case "$asset" in
+    *.tar.bz2) tar -xjf "$asset" --strip-components=1 -C "/opt/$dest" ;;
+    *.tar.xz)  tar -xJf "$asset" --strip-components=1 -C "/opt/$dest" ;;
+    *.tar.gz|*.tgz) tar -xzf "$asset" --strip-components=1 -C "/opt/$dest" ;;
+    *.zip)     unzip -o "$asset" -d "/opt/$dest" >/dev/null ;;
+    *) die "Unknown archive type: $asset" ;;
+  esac
+}
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------
+# Installer functions
+# ------------------------------------------------------------------------------------------------------------------------------------------------
+
 install_citrix_client() {
   require_root
   info "Installing Citrix client (expecting local .deb)"
-  if ! install_deb_from_assets 'icaclient_*.deb'; then
-    warn "No local icaclient .deb found; please add icaclient_*.deb to installation_files/"
-  fi
+  install_deb_from_assets 'icaclient_*.deb' \
+    || warn "No local icaclient .deb found; add icaclient_*.deb to installation_files/"
 }
 
 install_docker() {
   require_root
   info "Installing Docker (engine + compose plugin)"
-  apt-get update
-  apt-get install -y ca-certificates curl gnupg
+  apt_install_packages ca-certificates curl gnupg
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
   chmod a+r /etc/apt/keyrings/docker.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-  apt-get update
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  APT_UPDATED=0
   apt_install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 }
 
@@ -95,209 +135,100 @@ install_drawio() {
   require_root
   info "Installing draw.io desktop"
   apt_install_packages openjdk-11-jre-headless xvfb xauth
-  tmp="$(mktemp)"
-  api_url="https://api.github.com/repos/jgraph/drawio-desktop/releases/latest"
-  url="$(curl -fsSL "$api_url" 2>/dev/null | grep -oE 'https://[^"]+drawio-amd64-[0-9.]+\.deb' | head -n1 || true)"
-  if [[ -n "$url" ]]; then
-    wget -q -O "$tmp" "$url"
-    apt -y install "$tmp"
-    rm -f "$tmp"
-  else
-    warn "Could not find latest drawio release automatically. You may place drawio-amd64-*.deb into installation_files/ and run this again."
-  fi
+  install_github_latest_deb "jgraph/drawio-desktop" 'https://[^"]+drawio-amd64-[0-9.]+\.deb' \
+    || warn "Could not find latest drawio automatically; add drawio-amd64-*.deb to installation_files/."
 }
 
 install_dsistudio() {
   require_root
   info "Installing DSI-Studio (local zip expected)"
-  #apt_install_packages libqt6charts6-dev unzip || true
-  if install_tarball_to_opt 'dsi_studio*.zip' 'dsi-studio'; then
-    chmod -R 755 /opt/dsi-studio || true
-  else
-    warn "No DSI-Studio zip in installation_files/ (look for dsi_studio*.zip)"
-  fi
+  install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio' \
+    && chmod -R 755 /opt/dsi-studio || warn "No DSI-Studio zip in installation_files/ (dsi_studio*.zip)"
 }
 
 install_ferdium() {
   require_root
   info "Installing Ferdium"
-  if ! install_deb_from_assets 'Ferdium*.deb' && ! install_deb_from_assets 'ferdium_*.deb'; then
-    warn "No Ferdium .deb found in installation_files/"
-  fi
+  install_deb_from_assets 'Ferdium*.deb' \
+    || install_deb_from_assets 'ferdium_*.deb' \
+    || warn "No Ferdium .deb found in installation_files/"
 }
 
 install_googlechrome() {
   require_root
-  info "Installing Google Chrome (stable)"
-
-  local deb_name="google-chrome-stable_current_amd64.deb"
-  local deb_path="${INSTALL_DIR}/${deb_name}"
-
-  # 1. Check if .deb exists locally
-  if [[ -f "$deb_path" ]]; then
-    info "Found existing $deb_name in $INSTALL_DIR"
-  else
-    info "Downloading $deb_name to $INSTALL_DIR"
-    wget -q -O "$deb_path" "https://dl.google.com/linux/direct/${deb_name}"
-  fi
-
-  # 2. Install using helper function
-  if install_deb_from_assets "$deb_name"; then
-    info "Google Chrome installed successfully"
-  else
-    error "Failed to install Google Chrome"
-    return 1
-  fi
+  info "Installing Google Chrome"
+  install_deb_url "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
+                  "google-chrome-stable_current_amd64.deb"
 }
 
 install_zoomclient() {
   require_root
-  info "Installing Zoom client (deb)"
-
-  local deb_name="zoom_amd64.deb"
-  local deb_path="${INSTALL_DIR}/${deb_name}"
-
-    # 1. Check if .deb exists locally
-  if [[ -f "$deb_path" ]]; then
-    info "Found existing $deb_name in $INSTALL_DIR"
-  else
-    info "Downloading $deb_name to $INSTALL_DIR"
-    wget -q -O "$deb_path" "https://zoom.us/client/latest/${deb_name}"
-  fi
-
-  # 2. Install using helper function
-  if install_deb_from_assets "$deb_name"; then
-    info "Zoom installed successfully"
-  else
-    error "Failed to install Zoom"
-    return 1
-  fi
-
+  info "Installing Zoom"
+  install_deb_url "https://zoom.us/client/latest/zoom_amd64.deb" "zoom_amd64.deb"
 }
 
-install_guvcview() {
+install_onlyoffice() {
   require_root
-  info "Installing guvcview"
-  apt_install_packages guvcview || warn "guvcview not available in apt for your distro"
+  info "Installing OnlyOffice"
+  install_deb_url "https://github.com/ONLYOFFICE/DesktopEditors/releases/latest/download/onlyoffice-desktopeditors_amd64.deb" \
+                  "onlyoffice-desktopeditors_amd64.deb"
 }
 
-install_steam() {
-  require_root
-  info "Installing steam"
-  apt_install_packages steam || warn "steam not available in apt for your distro"
-}
+install_guvcview() { require_root; info "Installing guvcview"; apt_install_packages guvcview || warn "Not available"; }
+install_steam()    { require_root; info "Installing steam";    apt_install_packages steam || warn "Not available"; }
+install_octave()   { require_root; info "Installing Octave";   apt_install_packages octave; }
 
-install_insync() {
-  require_root
-  info "Installing Insync via official APT repository (strict mode)"
-  # Insync supports amd64 only
-  if [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
-    error "Insync only supports 64-bit (amd64). Aborting."
-    return 1
-  fi
-  # detect distro and codename
-  local os_id os_id_like distro codename
-  if [[ -f /etc/os-release ]]; then
-    os_id=$(awk -F= '/^ID=/ {print tolower($2)}' /etc/os-release | tr -d '\"') || true
-    os_id_like=$(awk -F= '/^ID_LIKE=/ {print tolower($2)}' /etc/os-release | tr -d '\"') || true
-    codename=$(awk -F= '/^VERSION_CODENAME=/ {print tolower($2)}' /etc/os-release | tr -d '\"') || true
-  fi
-  if [[ -z "$codename" ]]; then
-    codename=$(lsb_release -cs 2>/dev/null || true)
-  fi
-  if [[ "$os_id" == "ubuntu" || "$os_id_like" == *"ubuntu"* ]]; then
-    distro=ubuntu
-  elif [[ "$os_id" == "debian" || "$os_id_like" == *"debian"* ]]; then
-    distro=debian
-  elif [[ "$os_id" == "linuxmint" || "$os_id_like" == *"mint"* || "$os_id" == "mint" ]]; then
-    distro=mint
-  else
-    distro=debian
-  fi
-  if [[ -z "$codename" ]]; then
-    error "Could not detect distribution codename; cannot follow official Insync APT instructions. Aborting."
-    return 1
-  fi
-  info "Detected distro=$distro, codename=$codename"
-  # STEP 1: Add public GPG key
-  curl -L https://apt.insync.io/insynchq.gpg 2>/dev/null | gpg --dearmor | tee /etc/apt/trusted.gpg.d/insynchq.gpg >/dev/null
-  # STEP 2: Write apt source list
-  echo "deb http://apt.insync.io/$distro $codename non-free contrib" | tee /etc/apt/sources.list.d/insync.list > /dev/null
-  # STEP 3: Update
-  apt-get update
-  # STEP 4: Install
-  apt-get install -y insync
-}
-
-# https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html#automatic-install
 install_micromamba() {
   info "Installing micromamba (user-local install)"
-  "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
+  "${SHELL}" <(curl -fsSL micro.mamba.pm/install.sh)
 }
 
 install_mricrogl() {
   require_root
   info "Installing MRIcroGL (latest)"
-  mkdir -p "$INSTALL_DIR"
-  tmp="$(mktemp -d)"
-  curl -fsSL -o "$tmp/MRIcroGL_linux.zip" https://github.com/rordenlab/MRIcroGL/releases/latest/download/MRIcroGL_linux.zip || true
-  if [[ -f "$tmp/MRIcroGL_linux.zip" ]]; then
-    unzip -o "$tmp/MRIcroGL_linux.zip" -d /opt/MRIcroGL
+  local tmp; tmp="$(mktemp -d)"
+  if curl -fsSL -o "$tmp/MRIcroGL_linux.zip" https://github.com/rordenlab/MRIcroGL/releases/latest/download/MRIcroGL_linux.zip; then
+    mkdir -p /opt/MRIcroGL
+    unzip -o "$tmp/MRIcroGL_linux.zip" -d /opt/MRIcroGL >/dev/null
     chmod -R 755 /opt/MRIcroGL || true
-    rm -rf "$tmp"
   else
-    warn "Failed to download MRIcroGL automatically; you may add MRIcroGL_linux.zip to installation_files/"
+    warn "Failed to download MRIcroGL automatically; add MRIcroGL_linux.zip to installation_files/"
   fi
+  rm -rf "$tmp"
+}
+
+install_obsidian() {
+  require_root
+  info "Installing Obsidian (latest)"
+  install_github_latest_deb "obsidianmd/obsidian-releases" 'https://[^"]+linux.*\.deb' \
+    || warn "Could not auto-download Obsidian; add obsidian_*.deb to installation_files/"
 }
 
 install_nextcloud() {
   require_root
   info "Installing Nextcloud client"
-  # try the common package names
-  if apt_install_packages nextcloud-desktop 2>/dev/null; then
-    return 0
-  fi
-  if apt_install_packages nextcloud-client 2>/dev/null; then
-    return 0
-  fi
-  warn "Nextcloud client not available via apt package names on this system; consider adding distribution-specific repository or a local package to installation_files/"
-}
-
-install_obsidian() {
-  require_root
-  info "Installing Obsidian (GitHub latest release)"
-  tmp="$(mktemp)"
-  api="https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest"
-  url="$(curl -fsSL "$api" 2>/dev/null | grep -oE 'https://[^"]+linux.*\.deb' | head -n1 || true)"
-  if [[ -n "$url" ]]; then
-    wget -q -O "$tmp" "$url"
-    apt -y install "$tmp"
-    rm -f "$tmp"
-  else
-    warn "Could not auto-download Obsidian; place obsidian_*.deb into installation_files/ and run this installer."
-  fi
-}
-
-install_octave() {
-  require_root
-  info "Installing Octave"
-  apt_install_packages octave
+  apt_install_packages nextcloud-desktop 2>/dev/null \
+    || apt_install_packages nextcloud-client 2>/dev/null \
+    || warn "Nextcloud client not available via apt package names on this system."
 }
 
 install_signal() {
   require_root
   info "Installing Signal Desktop (official repo)"
-  wget -O- https://updates.signal.org/desktop/apt/keys.asc | gpg --dearmor > /usr/share/keyrings/signal-desktop-keyring.gpg
-  echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main' | tee /etc/apt/sources.list.d/signal-xenial.list
+  curl -fsSL https://updates.signal.org/desktop/apt/keys.asc | gpg --dearmor > /usr/share/keyrings/signal-desktop-keyring.gpg
+  echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main' \
+    > /etc/apt/sources.list.d/signal-xenial.list
+  APT_UPDATED=0
   apt_install_packages signal-desktop
 }
 
 install_spotify() {
   require_root
   info "Installing Spotify (official repo)"
-  curl -sS https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg | gpg --dearmor > /usr/share/keyrings/spotify-archive-keyring.gpg || true
-  echo "deb [signed-by=/usr/share/keyrings/spotify-archive-keyring.gpg] http://repository.spotify.com stable non-free" | tee /etc/apt/sources.list.d/spotify.list > /dev/null
-  apt-get update
+  curl -fsSL https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg | gpg --dearmor > /usr/share/keyrings/spotify-archive-keyring.gpg || true
+  echo "deb [signed-by=/usr/share/keyrings/spotify-archive-keyring.gpg] http://repository.spotify.com stable non-free" \
+    > /etc/apt/sources.list.d/spotify.list
+  APT_UPDATED=0
   apt_install_packages spotify-client || apt_install_packages spotify-client-gtk || warn "Could not install spotify-client; check repository"
 }
 
@@ -305,157 +236,104 @@ install_tuxedo() {
   require_root
   info "Installing TUXEDO Control Center"
   local keyring="tuxedo-archive-keyring_2022.04.01~tux_all.deb"
-  local keyurl="https://deb.tuxedocomputers.com/ubuntu/pool/main/t/tuxedo-archive-keyring/$keyring"
-  wget -q "$keyurl" -O "/tmp/$keyring"
-  dpkg -i "/tmp/$keyring"
-  rm -f "/tmp/$keyring"
-  local codename
-  codename=$(lsb_release -cs)
-  echo "deb [signed-by=/usr/share/keyrings/tuxedo-archive-keyring.gpg] https://deb.tuxedocomputers.com/ubuntu/ $codename main" | tee /etc/apt/sources.list.d/tuxedo.list > /dev/null
+  install_deb_url "https://deb.tuxedocomputers.com/ubuntu/pool/main/t/tuxedo-archive-keyring/${keyring}" "$keyring"
+  echo "deb [signed-by=/usr/share/keyrings/tuxedo-archive-keyring.gpg] https://deb.tuxedocomputers.com/ubuntu/ $(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/tuxedo.list
+  APT_UPDATED=0
   apt_install_packages tuxedo-control-center tuxedo-drivers
 }
 
 install_zotero() {
   require_root
-  info "Installing Zotero from tarball (local tarball expected)"
-  if install_tarball_to_opt 'Zotero-*_linux-x86_64.tar.bz2' zotero; then
-    if [[ -x /opt/zotero/set_launcher_icon ]]; then
-      /opt/zotero/set_launcher_icon
-    fi
+  info "Installing Zotero from tarball (local expected)"
+  if install_archive_to_opt 'Zotero-*_linux-x86_64.tar.bz2' zotero; then
+    [[ -x /opt/zotero/set_launcher_icon ]] && /opt/zotero/set_launcher_icon || true
     ln -sf /opt/zotero/zotero.desktop /usr/share/applications/ || true
     chmod -R 707 /opt/zotero || true
     apt_install_packages default-jre libreoffice-java-common || true
   else
-    warn "No Zotero tarball found in installation_files/ (Zotero-*_linux-x86_64.tar.bz2)"
+    warn "No Zotero tarball found in installation_files/"
   fi
 }
 
-install_onlyoffice() {
+install_thunderbird() {
   require_root
-  info "Installing Only Office (deb)"
-
-  local deb_name="onlyoffice-desktopeditors_amd64.deb"
-  local deb_path="${INSTALL_DIR}/${deb_name}"
-
-    # 1. Check if .deb exists locally
-  if [[ -f "$deb_path" ]]; then
-    info "Found existing $deb_name in $INSTALL_DIR"
-  else
-    info "Downloading $deb_name to $INSTALL_DIR"
-    wget -q -O "$deb_path" "https://github.com/ONLYOFFICE/DesktopEditors/releases/latest/download/${deb_name}"
-  fi
-
-  # 2. Install using helper function
-  if install_deb_from_assets "$deb_name"; then
-    info "Only Office installed successfully"
-  else
-    error "Failed to install Only Office"
-    return 1
-  fi
-
+  info "Installing Thunderbird (local tarball expected)"
+  install_archive_to_opt 'thunderbird*.tar.xz' thunderbird \
+    && chmod -R 755 /opt/thunderbird || warn "No thunderbird tarball found in installation_files/"
 }
 
-install_thunderbird(){
-  # https://www.thunderbird.net/de/thunderbird/all/
-  require_root
-  info "Installing Thunderbird"
-
-  if install_tarball_to_opt 'thunderbird*.tar.xz' 'thunderbird'; then
-    chmod -R 755 /opt/thunderbird || true
-  else
-    warn "No thunderbird tarball in installation_files/ (look for thunderbird*.tar.xz)"
-  fi
-}
-
-install_calibre(){
-  # https://calibre-ebook.com/download_linux
+install_calibre() {
   require_root
   info "Installing Calibre"
   wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin
 }
 
-############################################################################################
-# Scripts that help running selected installers or all
-############################################################################################
+# ------------------------------------------------------------------------------------------------------------
+# Client (run selected or all installers)
+# ------------------------------------------------------------------------------------------------------------
 
-# List available installers
+declare -A INSTALLERS=(
+  [citrix]=install_citrix_client
+  [docker]=install_docker
+  [drawio]=install_drawio
+  [dsi-studio]=install_dsistudio
+  [ferdium]=install_ferdium
+  [googlechrome]=install_googlechrome
+  [guvcview]=install_guvcview
+  [insync]=install_insync
+  [micromamba]=install_micromamba
+  [mricrogl]=install_mricrogl
+  [nextcloud]=install_nextcloud
+  [obsidian]=install_obsidian
+  [octave]=install_octave
+  [signal]=install_signal
+  [spotify]=install_spotify
+  [tuxedo]=install_tuxedo
+  [zoom]=install_zoomclient
+  [zotero]=install_zotero
+  [steam]=install_steam
+  [onlyoffice]=install_onlyoffice
+  [thunderbird]=install_thunderbird
+  [calibre]=install_calibre
+)
+
 list_installers() {
-  cat <<EOF
-Available installers:
-  citrix
-  docker
-  drawio
-  dsi-studio
-  ferdium
-  googlechrome
-  guvcview
-  insync
-  micromamba
-  mricrogl
-  nextcloud
-  obsidian
-  octave
-  signal
-  spotify
-  tuxedo
-  zoom
-  zotero
-  steam
-  onlyoffice
-  thunderbird
-  calibre
-Use: $0 --all  OR  $0 <name> [name...]
-EOF
+  echo "Available installers:"
+  for k in "${!INSTALLERS[@]}"; do echo "  $k"; done | sort
+  echo
+  echo "Use: $0 --all  OR  $0 <name> [name...]"
 }
 
-# Dispatcher
 run_selected() {
-  local -a to_run=("$@")
-  for t in "${to_run[@]}"; do
-    case "$t" in
-      citrix) install_citrix_client ;;
-      docker) install_docker ;;
-      drawio) install_drawio ;;
-      dsi-studio|dsistudio) install_dsistudio ;;
-      ferdium) install_ferdium ;;
-      googlechrome|chrome) install_googlechrome ;;
-      guvcview) install_guvcview ;;
-      insync) install_insync ;;
-      micromamba) install_micromamba ;;
-      mricrogl) install_mricrogl ;;
-      nextcloud) install_nextcloud ;;
-      obsidian) install_obsidian ;;
-      octave) install_octave ;;
-      signal) install_signal ;;
-      spotify) install_spotify ;;
-      tuxedo|tuxedo-control-center) install_tuxedo ;;
-      zoom|zoomclient) install_zoomclient ;;
-      zotero) install_zotero ;;
-      steam) install_steam ;;
-      onlyoffice) install_onlyoffice ;;
-      thunderbird) install_thunderbird ;;
-      calibre) install_calibre ;;
-      *)
-        warn "Unknown installer: $t"
-        ;;
-    esac
+  local name fn
+  for name in "$@"; do
+    fn="${INSTALLERS[$name]:-}"
+    if [[ -z "$fn" ]]; then
+      warn "Unknown installer: $name"
+      continue
+    fi
+    info "=== $name ==="
+    "$fn"
   done
 }
 
+run_all() {
+  run_selected "${!INSTALLERS[@]}"
+}
+
+# ------------------------------------------------------------------------------------------------------------------------
 # CLI
-if [[ ${#@} -eq 0 ]]; then
+# ------------------------------------------------------------------------------------------------------------------------
+
+if [[ $# -eq 0 ]]; then
   list_installers
   exit 0
 fi
 
-if [[ "$1" == "--list" ]]; then
-  list_installers
-  exit 0
-fi
-
-if [[ "$1" == "--all" ]]; then
-  run_selected citrix docker drawio dsi-studio ferdium googlechrome guvcview insync micromamba mricrogl nextcloud obsidian octave signal spotify tuxedo zoom zotero steam onlyoffice thunderbird calibre
-  exit 0
-fi
+case "${1:-}" in
+  --list) list_installers; exit 0 ;;
+  --all)  run_all; exit 0 ;;
+esac
 
 run_selected "$@"
