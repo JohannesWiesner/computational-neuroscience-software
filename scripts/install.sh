@@ -79,8 +79,8 @@ install_github_latest_deb() {
   local url
 
   # gets the exact url to the .deb file
-  url=$(curl -fsSL "$api" | jq -r '.assets[] | select(.name | test("amd64.*\\.deb$")) | .browser_download_url' | head -n1)
-  [[ -n "$url" ]] || die "Could not get url to .deb file from github API"
+  url=$(curl -fsSL "$api" | jq -r '.assets[] | select(.name | test("(x86_64|amd64).*\\.deb$")) | .browser_download_url' | head -n1)
+  [[ -n "$url" ]] || die "Could not find URL to .deb file from from the .json file provided by the Github API"
 
   # downloads the .deb file and installs application
   install_deb_url $url $name
@@ -167,7 +167,6 @@ install_onlyoffice() {
   require_root
   info "Installing OnlyOffice"
   install_github_latest_deb "ONLYOFFICE/DesktopEditors" "onlyoffice-desktopeditors.deb" || warn "Could not install OnlyOffice Desktop Editors"
-  #install_deb_url "https://github.com/ONLYOFFICE/DesktopEditors/releases/latest/download/onlyoffice-desktopeditors_amd64.deb" \"onlyoffice-desktopeditors_amd64.deb"
 }
 
 install_guvcview() { require_root; info "Installing guvcview"; apt_install_packages guvcview || warn "Not available"; }
@@ -227,7 +226,7 @@ install_spotify() {
   apt_install_packages spotify-client || warn "Could not install spotify-client; check repository"
 }
 
-install_tuxedo() {
+install_tuxedocontrolcenter() {
   require_root
   info "Installing TUXEDO Control Center"
   local keyring="tuxedo-archive-keyring_2022.04.01~tux_all.deb"
@@ -271,7 +270,6 @@ install_insync() {
     || warn "No local insync .deb found; add insync_*.deb to installation_files/"
 }
 
-
 # ------------------------------------------------------------------------------------------------------------
 # Client (run selected or all installers)
 # ------------------------------------------------------------------------------------------------------------
@@ -291,7 +289,7 @@ declare -A INSTALLERS=(
   [octave]=install_octave
   [signal]=install_signal
   [spotify]=install_spotify
-  [tuxedo]=install_tuxedo
+  [tuxedocontrolcenter]=install_tuxedocontrolcenter
   [zoom]=install_zoomclient
   [zotero]=install_zotero
   [steam]=install_steam
