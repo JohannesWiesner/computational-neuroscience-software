@@ -19,3 +19,14 @@ Notes
 ## Download pages
 
 Insync : https://www.insynchq.com/downloads/linux
+Citrix Client : https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html
+
+or this page for older releases if the newest one does not work: https://www.citrix.com/downloads/workspace-app/legacy-workspace-app-for-linux/?srsltid=AfmBOoq-Vih24iosurRPrw5o0zC6pHFnphOWgVfTY6qhFjBKOf_nA4Kj
+
+Working version: icaclient_23.11.0.82_amd64.deb
+
+Zotero: https://www.zotero.org/download/
+
+Thunderbird: https://www.thunderbird.net/de/download/
+
+DSI-Studio: https://dsi-studio.labsolver.org/download.html
