@@ -225,11 +225,10 @@ install_signal() {
 install_spotify() {
   require_root
   info "Installing Spotify (official repo)"
-  curl -fsSL https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg | gpg --dearmor > /usr/share/keyrings/spotify-archive-keyring.gpg || true
-  echo "deb [signed-by=/usr/share/keyrings/spotify-archive-keyring.gpg] http://repository.spotify.com stable non-free" \
-    > /etc/apt/sources.list.d/spotify.list
+  curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
+  echo "deb https://repository.spotify.com stable non-free" | tee /etc/apt/sources.list.d/spotify.list
   APT_UPDATED=0
-  apt_install_packages spotify-client || apt_install_packages spotify-client-gtk || warn "Could not install spotify-client; check repository"
+  apt_install_packages spotify-client || warn "Could not install spotify-client; check repository"
 }
 
 install_tuxedo() {
@@ -285,7 +284,7 @@ declare -A INSTALLERS=(
   [citrix]=install_citrix_client
   [docker]=install_docker
   [drawio]=install_drawio
-  [dsi-studio]=install_dsistudio
+  [dsistudio]=install_dsistudio
   [ferdium]=install_ferdium
   [googlechrome]=install_googlechrome
   [guvcview]=install_guvcview
