@@ -125,6 +125,12 @@ ensure_flatpak() {
 # Installer functions
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
+install_pdf_sam() {
+  require_root
+  info "Installing PDFsam"
+  install_deb_from_assets 'pdfsam*.deb' || warn "No local PDFsam .deb found; add pdfsam*.deb to installation_files/"
+}
+
 install_remmina()  {
   ensure_flatpak
   info "Installing flatpak app: Remmina"
@@ -321,6 +327,7 @@ install_insync() {
 # ------------------------------------------------------------------------------------------------------------
 
 declare -A INSTALLERS=(
+  [pdfsam]=install_pdf_sam
   [remmina]=install_remmina
   [disk_usage_analyzer]=install_disk_usage_analyzer
   [citrix]=install_citrix_client

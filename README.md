@@ -22,4 +22,5 @@ Consolidated installer helpers for commonly used software.
 | Zotero | https://www.zotero.org/download/ | |
 | Thunderbird | https://www.thunderbird.net/de/download/ | |
 | DSI-Studio | https://dsi-studio.labsolver.org/download.html | |
+| PDFsam | https://pdfsam.org/download-pdfsam-basic/ ||
 
