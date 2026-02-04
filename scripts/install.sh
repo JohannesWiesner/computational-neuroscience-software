@@ -83,7 +83,7 @@ install_github_latest_deb() {
   [[ -n "$url" ]] || die "Could not find URL to .deb file from from the .json file provided by the Github API"
 
   # downloads the .deb file and installs application
-  install_deb_url $url $name
+  install_deb_url "$url" "$name"
 }
 
 install_archive_to_opt() {
@@ -190,8 +190,11 @@ install_dsistudio() {
   require_root
   info "Installing DSI-Studio (local zip expected)"
   apt_install_packages libqt6charts6-dev # See: https://dsi-studio.labsolver.org/download.html
-  install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio' \
-    && chmod -R 755 /opt/dsi-studio || warn "No DSI-Studio zip in installation_files/ (dsi_studio*.zip)"
+  if install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio'; then
+    chmod -R 755 /opt/dsi-studio
+  else
+    warn "No DSI-Studio zip in installation_files/ (dsi_studio*.zip)"
+  fi
 }
 
 install_ferdium() {
@@ -292,11 +295,12 @@ install_tuxedocontrolcenter() {
 install_zotero() {
   require_root
   info "Installing Zotero from tarball (local expected)"
+
   if install_archive_to_opt 'Zotero-*_linux-x86_64.tar.bz2' zotero; then
-    [[ -x /opt/zotero/set_launcher_icon ]] && /opt/zotero/set_launcher_icon || true
-    ln -sf /opt/zotero/zotero.desktop /usr/share/applications/ || true
-    chmod -R 707 /opt/zotero || true
-    apt_install_packages default-jre libreoffice-java-common || true
+    [[ -x /opt/zotero/set_launcher_icon ]] && /opt/zotero/set_launcher_icon || :
+    ln -sf /opt/zotero/zotero.desktop /usr/share/applications/ || :
+    chmod -R 707 /opt/zotero || :
+    apt_install_packages default-jre libreoffice-java-common || :
   else
     warn "No Zotero tarball found in installation_files/"
   fi
@@ -305,8 +309,12 @@ install_zotero() {
 install_thunderbird() {
   require_root
   info "Installing Thunderbird (local tarball expected)"
-  install_archive_to_opt 'thunderbird*.tar.xz' thunderbird \
-    && chmod -R 755 /opt/thunderbird || warn "No thunderbird tarball found in installation_files/"
+
+  if install_archive_to_opt 'thunderbird*.tar.xz' thunderbird; then
+    chmod -R 755 /opt/thunderbird
+  else
+    warn "No thunderbird tarball found in installation_files/"
+  fi
 }
 
 install_calibre() {
