@@ -105,9 +105,31 @@ install_archive_to_opt() {
   esac
 }
 
+ensure_flatpak() {
+  # Ensure that flatpak is installed. If not, install it and add the flathub repository.
+  if ! command -v flatpak >/dev/null 2>&1; then
+    require_root
+    info "Installing flatpak"
+    apt_install_packages flatpak
+  fi
+
+  # Ensure Flathub exists (idempotent)
+  if ! flatpak remotes | awk '{print $1}' | grep -qx flathub; then
+    info "Adding Flathub remote"
+    flatpak remote-add --if-not-exists flathub \
+      https://dl.flathub.org/repo/flathub.flatpakrepo
+  fi
+}
+
 # -----------------------------------------------------------------------------------------------------------------------------------------------
 # Installer functions
 # ------------------------------------------------------------------------------------------------------------------------------------------------
+
+install_disk_usage_analyzer() {
+  ensure_flatpak
+  info "Installing flatpak app: Disk Usage Analyzer"
+  flatpak install -y flathub org.gnome.baobab
+}
 
 install_citrix_client() {
   require_root
@@ -293,6 +315,7 @@ install_insync() {
 # ------------------------------------------------------------------------------------------------------------
 
 declare -A INSTALLERS=(
+  [disk_usage_analyzer]=install_disk_usage_analyzer
   [citrix]=install_citrix_client
   [docker]=install_docker
   [drawio]=install_drawio
@@ -315,6 +338,7 @@ declare -A INSTALLERS=(
   [thunderbird]=install_thunderbird
   [calibre]=install_calibre
   [insync]=install_insync
+
 )
 
 list_installers() {
