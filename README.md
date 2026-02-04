@@ -16,17 +16,13 @@ Notes
 - Keep large vendor artifacts in `installation_files/` to avoid committing binaries directly to git history.
 
 
-## Download pages
+## Where to download .deb files
 
-Insync : https://www.insynchq.com/downloads/linux
-Citrix Client : https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html
+| Software | Download | Notes |
+|----------|----------|-------|
+| Insync | https://www.insynchq.com/downloads/linux | |
+| Citrix Workspace Client | Newest version: https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html<br>Legacy versions: https://www.citrix.com/downloads/workspace-app/legacy-workspace-app-for-linux/ | Currently only `icaclient_23.11.0.82_amd64.deb` is confirmed to work |
+| Zotero | https://www.zotero.org/download/ | |
+| Thunderbird | https://www.thunderbird.net/de/download/ | |
+| DSI-Studio | https://dsi-studio.labsolver.org/download.html | |
 
-or this page for older releases if the newest one does not work: https://www.citrix.com/downloads/workspace-app/legacy-workspace-app-for-linux/?srsltid=AfmBOoq-Vih24iosurRPrw5o0zC6pHFnphOWgVfTY6qhFjBKOf_nA4Kj
-
-Working version: icaclient_23.11.0.82_amd64.deb
-
-Zotero: https://www.zotero.org/download/
-
-Thunderbird: https://www.thunderbird.net/de/download/
-
-DSI-Studio: https://dsi-studio.labsolver.org/download.html
