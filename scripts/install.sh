@@ -113,6 +113,24 @@ install_citrix_client() {
   require_root
   info "Installing Citrix client (expecting local .deb)"
   install_deb_from_assets 'icaclient_*.deb' || warn "No local icaclient .deb found; add icaclient_*.deb to installation_files/"
+
+  # Ubuntu 24.04: SelfService needs WebKitGTK 4.0 from Jammy (Citrix backport note)
+  # See: https://docs.citrix.com/de-de/citrix-workspace-app-for-linux/system-requirements.html
+  info "Installing necessary dependencies for Citrix Workspace Client"
+
+  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy main"
+  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy-updates main"
+  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy-security main"
+
+  apt update
+  apt install -y libwebkit2gtk-4.0-dev
+
+  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy main"
+  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy-updates main"
+  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy-security main"
+
+  apt update
+
 }
 
 install_docker() {
