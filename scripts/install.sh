@@ -125,6 +125,12 @@ ensure_flatpak() {
 # Installer functions
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
+install_remmina()  {
+  ensure_flatpak
+  info "Installing flatpak app: Remmina"
+  flatpak install -y flathub org.remmina.Remmina
+}
+
 install_disk_usage_analyzer() {
   ensure_flatpak
   info "Installing flatpak app: Disk Usage Analyzer"
@@ -315,6 +321,7 @@ install_insync() {
 # ------------------------------------------------------------------------------------------------------------
 
 declare -A INSTALLERS=(
+  [remmina]=install_remmina
   [disk_usage_analyzer]=install_disk_usage_analyzer
   [citrix]=install_citrix_client
   [docker]=install_docker
