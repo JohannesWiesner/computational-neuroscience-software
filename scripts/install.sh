@@ -297,7 +297,10 @@ install_zotero() {
   info "Installing Zotero from tarball (local expected)"
 
   if install_archive_to_opt 'Zotero-*_linux-x86_64.tar.bz2' zotero; then
-    [[ -x /opt/zotero/set_launcher_icon ]] && /opt/zotero/set_launcher_icon || :
+    if [[ -x /opt/zotero/set_launcher_icon ]]; then
+      /opt/zotero/set_launcher_icon || :
+    fi
+
     ln -sf /opt/zotero/zotero.desktop /usr/share/applications/ || :
     chmod -R 707 /opt/zotero || :
     apt_install_packages default-jre libreoffice-java-common || :
