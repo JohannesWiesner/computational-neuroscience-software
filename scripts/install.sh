@@ -89,19 +89,34 @@ install_github_latest_deb() {
 install_archive_to_opt() {
   # Usage: install_archive_to_opt <pattern-in-assets> <opt-subdir>
   require_root
-  local pattern="$1" dest="$2" asset
-  asset="$(find_asset "$pattern")"
-  [[ -n "$asset" ]] || return 1
+  local asset dest="$2" target="/opt" listcmd
 
-  info "Extracting $(basename "$asset") to /opt/$dest"
-  mkdir -p "/opt/$dest"
+  asset="$(find_asset "$1")"
+  [[ -n "$asset" ]] || die "Could not find archive file in installation_files directory"
 
   case "$asset" in
-    *.tar.bz2) tar -xjf "$asset" --strip-components=1 -C "/opt/$dest" ;;
-    *.tar.xz)  tar -xJf "$asset" --strip-components=1 -C "/opt/$dest" ;;
-    *.tar.gz|*.tgz) tar -xzf "$asset" --strip-components=1 -C "/opt/$dest" ;;
-    *.zip)     unzip -o -j "$asset" -d "/opt/$dest" >/dev/null ;;
+    *.zip) listcmd=(unzip -Z1 "$asset") ;;
+    *.tar.bz2|*.tar.xz|*.tar.gz|*.tgz) listcmd=(tar -tf "$asset") ;;
     *) die "Unknown archive type: $asset" ;;
+  esac
+
+  # Wrapper if: exactly 1 unique top-level name AND at least one entry has a '/' (topdir/...)
+  "${listcmd[@]}" 2>/dev/null \
+  | sed 's|^\./||' \
+  | awk -F/ '
+      NF==0 {next}
+      { top[$1]=1; if (NF>1) has_sub=1 }
+      END { n=0; for (t in top) n++; exit !(n==1 && has_sub) }
+    ' || target="/opt/$dest"
+
+  mkdir -p "$target"
+  info "Extracting $(basename "$asset") to $target"
+
+  case "$asset" in
+    *.zip) unzip -o "$asset" -d "$target" >/dev/null ;;
+    *.tar.bz2) tar -xjf "$asset" -C "$target" ;;
+    *.tar.xz)  tar -xJf "$asset" -C "$target" ;;
+    *.tar.gz|*.tgz) tar -xzf "$asset" -C "$target" ;;
   esac
 }
 
