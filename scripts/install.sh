@@ -162,6 +162,12 @@ install_disk_usage_analyzer() {
   flatpak install -y flathub org.gnome.baobab
 }
 
+install_jasp() {
+  ensure_flatpak
+  info "Installing flatpak app: JASP"
+  flatpak install -y flathub org.jaspstats.JASP
+}
+
 install_citrix_client() {
   require_root
   info "Installing Citrix client (expecting local .deb)"
@@ -368,6 +374,7 @@ declare -A INSTALLERS=(
   [pdfsam]=install_pdf_sam
   [remmina]=install_remmina
   [disk_usage_analyzer]=install_disk_usage_analyzer
+  [jasp]=install_jasp
   [citrix]=install_citrix_client
   [docker]=install_docker
   [drawio]=install_drawio
