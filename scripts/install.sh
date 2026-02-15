@@ -118,6 +118,10 @@ install_archive_to_opt() {
     *.tar.xz)  tar -xJf "$asset" -C "$target" ;;
     *.tar.gz|*.tgz) tar -xzf "$asset" -C "$target" ;;
   esac
+
+  # change user permissions
+  chmod -R 755 "$target"
+
 }
 
 ensure_flatpak() {
@@ -202,14 +206,22 @@ install_drawio() {
 }
 
 install_dsistudio() {
+  # Install DSI-Studio (dependency required, see: https://dsi-studio.labsolver.org/download.html)
   require_root
-  info "Installing DSI-Studio (local zip expected)"
-  apt_install_packages libqt6charts6-dev # See: https://dsi-studio.labsolver.org/download.html
-  if install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio'; then
-    chmod -R 755 /opt/dsi-studio
-  else
-    warn "No DSI-Studio zip in installation_files/ (dsi_studio*.zip)"
-  fi
+  info "Installing DSI-Studio (local .zip expected)"
+  apt_install_packages libqt6charts6-dev
+  install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio'
+
+  info "Create .desktop file for DSI-Studio"
+  printf '%s\n' \
+  '[Desktop Entry]' \
+  'Type=Application' \
+  'Name=DSI Studio' \
+  'Exec=/opt/dsi-studio/dsi_studio' \
+  "Icon=${INSTALL_DIR}/dsi_studio.png" \
+  'Terminal=false' \
+  'Categories=Science;' \
+  > /usr/share/applications/dsi-studio.desktop
 }
 
 install_ferdium() {
