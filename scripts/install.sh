@@ -144,6 +144,16 @@ ensure_flatpak() {
 # Installer functions
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
+install_guvcview() { require_root; info "Installing guvcview"; apt_install_packages guvcview || warn "Not available"; }
+install_steam()    { require_root; info "Installing steam";    apt_install_packages steam || warn "Not available"; }
+install_octave()   { require_root; info "Installing Octave";   apt_install_packages octave; }
+
+install_micromamba() {
+  info "Installing micromamba (user-local install)"
+  "${SHELL}" <(curl -fsSL micro.mamba.pm/install.sh)
+}
+
+
 install_pdf_sam() {
   require_root
   info "Installing PDFsam"
@@ -168,68 +178,6 @@ install_jasp() {
   flatpak install -y flathub org.jaspstats.JASP
 }
 
-install_citrix_client() {
-  require_root
-  info "Installing Citrix client (expecting local .deb)"
-  install_deb_from_assets 'icaclient_*.deb' || warn "No local icaclient .deb found; add icaclient_*.deb to installation_files/"
-
-  # Ubuntu 24.04: SelfService needs WebKitGTK 4.0 from Jammy (Citrix backport note)
-  # See: https://docs.citrix.com/de-de/citrix-workspace-app-for-linux/system-requirements.html
-  info "Installing necessary dependencies for Citrix Workspace Client"
-
-  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy main"
-  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy-updates main"
-  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy-security main"
-
-  apt update
-  apt install -y libwebkit2gtk-4.0-dev
-
-  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy main"
-  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy-updates main"
-  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy-security main"
-
-  apt update
-
-}
-
-install_docker() {
-  require_root
-  info "Installing Docker (engine + compose plugin)"
-  apt_install_packages ca-certificates curl gnupg
-  install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  chmod a+r /etc/apt/keyrings/docker.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-    > /etc/apt/sources.list.d/docker.list
-  APT_UPDATED=0
-  apt_install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-}
-
-install_drawio() {
-  require_root
-  info "Installing draw.io desktop"
-  install_github_latest_deb "jgraph/drawio-desktop" "drawio.deb" || warn "Could not install drawio"
-}
-
-install_dsistudio() {
-  # Install DSI-Studio (dependency required, see: https://dsi-studio.labsolver.org/download.html)
-  require_root
-  info "Installing DSI-Studio (local .zip expected)"
-  apt_install_packages libqt6charts6-dev
-  install_archive_to_opt 'dsi_studio*.zip' 'dsi-studio'
-
-  info "Create .desktop file for DSI-Studio"
-  printf '%s\n' \
-  '[Desktop Entry]' \
-  'Type=Application' \
-  'Name=DSI Studio' \
-  'Exec=/opt/dsi-studio/dsi_studio' \
-  "Icon=${INSTALL_DIR}/dsi_studio.png" \
-  'Terminal=false' \
-  'Categories=Science;' \
-  > /usr/share/applications/dsi-studio.desktop
-}
-
 install_ferdium() {
   require_root
   info "Installing Ferdium"
@@ -241,8 +189,7 @@ install_ferdium() {
 install_googlechrome() {
   require_root
   info "Installing Google Chrome"
-  install_deb_url "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
-                  "google-chrome-stable_current_amd64.deb"
+  install_deb_url "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" "google-chrome-stable_current_amd64.deb"
 }
 
 install_zoomclient() {
@@ -257,27 +204,10 @@ install_onlyoffice() {
   install_github_latest_deb "ONLYOFFICE/DesktopEditors" "onlyoffice-desktopeditors.deb" || warn "Could not install OnlyOffice Desktop Editors"
 }
 
-install_guvcview() { require_root; info "Installing guvcview"; apt_install_packages guvcview || warn "Not available"; }
-install_steam()    { require_root; info "Installing steam";    apt_install_packages steam || warn "Not available"; }
-install_octave()   { require_root; info "Installing Octave";   apt_install_packages octave; }
-
-install_micromamba() {
-  info "Installing micromamba (user-local install)"
-  "${SHELL}" <(curl -fsSL micro.mamba.pm/install.sh)
-}
-
-install_mricrogl() {
+install_drawio() {
   require_root
-  info "Installing MRIcroGL (latest)"
-  local tmp; tmp="$(mktemp -d)"
-  if curl -fsSL -o "$tmp/MRIcroGL_linux.zip" https://github.com/rordenlab/MRIcroGL/releases/latest/download/MRIcroGL_linux.zip; then
-    mkdir -p /opt/MRIcroGL
-    unzip -o "$tmp/MRIcroGL_linux.zip" -d /opt/MRIcroGL >/dev/null
-    chmod -R 755 /opt/MRIcroGL || true
-  else
-    warn "Failed to download MRIcroGL automatically; add MRIcroGL_linux.zip to installation_files/"
-  fi
-  rm -rf "$tmp"
+  info "Installing draw.io desktop"
+  install_github_latest_deb "jgraph/drawio-desktop" "drawio.deb" || warn "Could not install drawio"
 }
 
 install_obsidian() {
@@ -312,17 +242,6 @@ install_spotify() {
   echo "deb https://repository.spotify.com stable non-free" | tee /etc/apt/sources.list.d/spotify.list
   APT_UPDATED=0
   apt_install_packages spotify-client || warn "Could not install spotify-client; check repository"
-}
-
-install_tuxedocontrolcenter() {
-  require_root
-  info "Installing TUXEDO Control Center"
-  local keyring="tuxedo-archive-keyring_2022.04.01~tux_all.deb"
-  install_deb_url "https://deb.tuxedocomputers.com/ubuntu/pool/main/t/tuxedo-archive-keyring/${keyring}" "$keyring"
-  echo "deb [signed-by=/usr/share/keyrings/tuxedo-archive-keyring.gpg] https://deb.tuxedocomputers.com/ubuntu/ $(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/tuxedo.list
-  APT_UPDATED=0
-  apt_install_packages tuxedo-control-center tuxedo-drivers
 }
 
 install_zotero() {
@@ -365,6 +284,91 @@ install_insync() {
   install_deb_from_assets 'insync_*.deb' \
     || warn "No local insync .deb found; add insync_*.deb to installation_files/"
 }
+
+install_citrix_client() {
+  require_root
+  info "Installing Citrix client (expecting local .deb)"
+  install_deb_from_assets 'icaclient_*.deb' || warn "No local icaclient .deb found; add icaclient_*.deb to installation_files/"
+
+  # Ubuntu 24.04: SelfService needs WebKitGTK 4.0 from Jammy (Citrix backport note)
+  # See: https://docs.citrix.com/de-de/citrix-workspace-app-for-linux/system-requirements.html
+  info "Installing necessary dependencies for Citrix Workspace Client"
+
+  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy main"
+  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy-updates main"
+  apt-add-repository -y "deb http://us.archive.ubuntu.com/ubuntu jammy-security main"
+
+  apt update
+  apt install -y libwebkit2gtk-4.0-dev
+
+  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy main"
+  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy-updates main"
+  apt-add-repository -y -r "deb http://us.archive.ubuntu.com/ubuntu jammy-security main"
+
+  apt update
+
+}
+
+install_docker() {
+  require_root
+  info "Installing Docker (engine + compose plugin)"
+  apt_install_packages ca-certificates curl gnupg
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  APT_UPDATED=0
+  apt_install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+}
+
+install_dsistudio() {
+  # Install DSI-Studio (dependency required, see: https://dsi-studio.labsolver.org/download.html)
+  require_root
+  info "Installing DSI-Studio (local .zip expected)"
+  apt_install_packages libqt6charts6-dev
+  install_archive_to_opt 'dsi_studio*.zip' 'dsi_studio'
+  info "Create .desktop file for DSI-Studio"
+  cp ${INSTALL_DIR}/dsi_studio.png /usr/share/icons/hicolor/256x256/apps/dsi_studio.png
+  gtk-update-icon-cache -f /usr/share/icons/hicolor
+  printf '%s\n' \
+  '[Desktop Entry]' \
+  'Type=Application' \
+  'Name=DSI Studio' \
+  'Exec=/opt/dsi-studio/dsi_studio' \
+  "Icon=dsi_studio" \
+  'Terminal=false' \
+  'Categories=Science;' \
+  > /usr/share/applications/dsi_studio.desktop
+}
+
+
+install_mricrogl() {
+  require_root
+  info "Installing MRIcroGL (latest)"
+  local tmp; tmp="$(mktemp -d)"
+  if curl -fsSL -o "$tmp/MRIcroGL_linux.zip" https://github.com/rordenlab/MRIcroGL/releases/latest/download/MRIcroGL_linux.zip; then
+    mkdir -p /opt/MRIcroGL
+    unzip -o "$tmp/MRIcroGL_linux.zip" -d /opt/MRIcroGL >/dev/null
+    chmod -R 755 /opt/MRIcroGL || true
+  else
+    warn "Failed to download MRIcroGL automatically; add MRIcroGL_linux.zip to installation_files/"
+  fi
+  rm -rf "$tmp"
+}
+
+install_tuxedocontrolcenter() {
+  require_root
+  info "Installing TUXEDO Control Center"
+  local keyring="tuxedo-archive-keyring_2022.04.01~tux_all.deb"
+  install_deb_url "https://deb.tuxedocomputers.com/ubuntu/pool/main/t/tuxedo-archive-keyring/${keyring}" "$keyring"
+  echo "deb [signed-by=/usr/share/keyrings/tuxedo-archive-keyring.gpg] https://deb.tuxedocomputers.com/ubuntu/ $(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/tuxedo.list
+  APT_UPDATED=0
+  apt_install_packages tuxedo-control-center tuxedo-drivers
+}
+
+
 
 # ------------------------------------------------------------------------------------------------------------
 # Client (run selected or all installers)
